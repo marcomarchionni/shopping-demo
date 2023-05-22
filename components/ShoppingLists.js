@@ -1,24 +1,23 @@
-import { useEffect, useState } from "react";
 import {
-  FlatList,
-  View,
-  StyleSheet,
-  Text,
-  TextInput,
-  Alert,
-  TouchableOpacity,
-} from "react-native";
-import {
-  DocumentSnapshot,
   addDoc,
   collection,
-  getDocs,
   onSnapshot,
   query,
   where,
 } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import {
+  Alert,
+  FlatList,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const ShoppingLists = ({ db, route }) => {
+const ShoppingLists = ({ db, route, isConnected }) => {
   const { userID } = route.params;
   const [lists, setLists] = useState([]);
   const [listName, setListName] = useState("");
@@ -35,20 +34,44 @@ const ShoppingLists = ({ db, route }) => {
     }
   };
 
+  const cacheShoppingLists = async (lists) => {
+    try {
+      await AsyncStorage.setItem("shopping_lists", JSON.stringify(lists));
+    } catch (error) {
+      console.error(error.message);
+    }
+  };
+
+  const loadCachedLists = async () => {
+    try {
+      const lists = (await AsyncStorage.getItem("shopping_lists")) || [];
+      setLists(JSON.parse(lists));
+    } catch (error) {
+      console.error(error.message);
+    }
+  };
+
   useEffect(() => {
-    const q = query(
-      collection(db, "shoppinglists"),
-      where("uid", "==", userID)
-    );
-    const unsubShoppingList = onSnapshot(q, (documentSnapshot) => {
-      let newLists = [];
-      documentSnapshot.forEach((doc) => {
-        newLists.push({ id: doc.id, ...doc.data() });
+    let unsubShoppingList;
+    if (isConnected === true) {
+      const q = query(
+        collection(db, "shoppinglists"),
+        where("uid", "==", userID)
+      );
+      unsubShoppingList = onSnapshot(q, (documentSnapshot) => {
+        let newLists = [];
+        documentSnapshot.forEach((doc) => {
+          newLists.push({ id: doc.id, ...doc.data() });
+        });
+        cacheShoppingLists(newLists);
+        setLists(newLists);
       });
-      setLists(newLists);
-    });
+    } else {
+      loadCachedLists();
+    }
+    // Clean up
     return () => unsubShoppingList && unsubShoppingList();
-  }, []);
+  }, [isConnected]);
 
   return (
     <View style={styles.container}>

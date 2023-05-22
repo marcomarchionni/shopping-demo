@@ -1,10 +1,20 @@
-import { StatusBar } from "expo-status-bar";
-import { StyleSheet, Text, View } from "react-native";
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import {
+  getFirestore,
+  disableNetwork,
+  enableNetwork,
+} from "firebase/firestore";
+import { StyleSheet } from "react-native";
+
 // import react Navigation
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+
+import { useNetInfo } from "@react-native-community/netinfo";
+import { useEffect } from "react";
+import { LogBox, Alert } from "react-native";
+
+LogBox.ignoreLogs(["AsyncStorage has been extracted from"]);
 
 // Create the navigator
 const Stack = createNativeStackNavigator(); // Create the navigator
@@ -12,7 +22,7 @@ const Stack = createNativeStackNavigator(); // Create the navigator
 import ShoppingLists from "./components/ShoppingLists";
 import Welcome from "./components/Welcome";
 
-export default function App() {
+const App = () => {
   // Your web app's Firebase configuration
   const firebaseConfig = {
     apiKey: "AIzaSyBY4UF1l7mVN6kC97ewtt0UQywmalXeSrw",
@@ -29,17 +39,34 @@ export default function App() {
   // Initialize Cloud Firestore and get a reference to the service
   const db = getFirestore(app);
 
+  const connectionStatus = useNetInfo();
+
+  useEffect(() => {
+    if (connectionStatus.isConnected === false) {
+      Alert.alert("Connection lost!");
+      disableNetwork(db);
+    } else if (connectionStatus.isConnected === true) {
+      enableNetwork(db);
+    }
+  }, [connectionStatus.isConnected]);
+
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Welcome">
         <Stack.Screen name="Welcome" component={Welcome} />
         <Stack.Screen name="ShoppingLists">
-          {(props) => <ShoppingLists db={db} {...props} />}
+          {(props) => (
+            <ShoppingLists
+              db={db}
+              isConnected={connectionStatus.isConnected}
+              {...props}
+            />
+          )}
         </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -49,3 +76,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 });
+
+export default App;

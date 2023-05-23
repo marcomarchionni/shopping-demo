@@ -51,13 +51,20 @@ const ShoppingLists = ({ db, route, isConnected }) => {
     }
   };
 
+  let unsubShoppingList;
+
   useEffect(() => {
-    let unsubShoppingList;
     if (isConnected === true) {
+      // unregister current listener
+      if (unsubShoppingList) unsubShoppingList();
+      unsubShoppingList = null;
+
       const q = query(
         collection(db, "shoppinglists"),
         where("uid", "==", userID)
       );
+
+      // setup new listener
       unsubShoppingList = onSnapshot(q, (documentSnapshot) => {
         let newLists = [];
         documentSnapshot.forEach((doc) => {
@@ -69,7 +76,7 @@ const ShoppingLists = ({ db, route, isConnected }) => {
     } else {
       loadCachedLists();
     }
-    // Clean up
+    // Unregister listener on unmount
     return () => unsubShoppingList && unsubShoppingList();
   }, [isConnected]);
 
@@ -85,29 +92,31 @@ const ShoppingLists = ({ db, route, isConnected }) => {
           </View>
         )}
       />
-      <View style={styles.listForm}>
-        <TextInput
-          style={styles.listName}
-          placeholder="List Name"
-          value={listName}
-          onChangeText={setListName}
-        />
-        <TextInput
-          style={styles.item}
-          placeholder="Item #1"
-          value={item1}
-          onChangeText={setItem1}
-        />
-        <TextInput
-          style={styles.item}
-          placeholder="Item #2"
-          value={item2}
-          onChangeText={setItem2}
-        />
-        <TouchableOpacity style={styles.addButton} onPress={addShoppingList}>
-          <Text style={styles.addButtonText}>Add</Text>
-        </TouchableOpacity>
-      </View>
+      {isConnected && (
+        <View style={styles.listForm}>
+          <TextInput
+            style={styles.listName}
+            placeholder="List Name"
+            value={listName}
+            onChangeText={setListName}
+          />
+          <TextInput
+            style={styles.item}
+            placeholder="Item #1"
+            value={item1}
+            onChangeText={setItem1}
+          />
+          <TextInput
+            style={styles.item}
+            placeholder="Item #2"
+            value={item2}
+            onChangeText={setItem2}
+          />
+          <TouchableOpacity style={styles.addButton} onPress={addShoppingList}>
+            <Text style={styles.addButtonText}>Add</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 };
